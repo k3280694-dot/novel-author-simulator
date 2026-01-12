@@ -22,7 +22,8 @@ class Player:
     motivation: int = 70
     fans: int = 0
     words: int = 0
-    signed: bool = False
+    signed: bool = False  # 作者是否已签约
+    contract_months_left: int = 0  # 合同剩余月份，未签约为 0
 
     def advance_period(self, plan: str) -> None:
         if plan == "focus_writing":
@@ -48,7 +49,7 @@ class Player:
         self.health = _clamp(self.health, 0, 100)
         self.motivation = _clamp(self.motivation, 0, 100)
 
-        self._check_sign_status()
+        self._check_sign_contract()
         self.period += 1
         if self.period > 3:
             self.period = 1
@@ -58,22 +59,28 @@ class Player:
     def summary(self) -> str:
         labels = {1: "上旬", 2: "中旬", 3: "下旬"}
         label = labels.get(self.period, "未知")
-        sign_status = "已签约" if self.signed else "未签约"
+        if self.signed:
+            sign_status = f"已签约，合同剩余 {self.contract_months_left} 个月"
+        else:
+            sign_status = "未签约"
         return (
-            f"Month {self.month}-{label} | 身份: {sign_status} | Words: {self.words} "
+            f"Month {self.month}-{label} | 签约状态: {sign_status} | Words: {self.words} "
             f"| Balance: {self.balance} | Stress: {self.stress} | Health: {self.health} "
             f"| Motivation: {self.motivation} | Fans: {self.fans}"
         )
 
-    def _check_sign_status(self) -> None:
+    def _check_sign_contract(self) -> None:
         if self.signed:
             return
-        if self.words >= 50_000 and self.fans >= 300:
+        if (
+            self.words >= 10_000
+            and self.health >= 50
+            and self.stress <= 80
+            and self.motivation >= 60
+        ):
             self.signed = True
-            print(
-                f"【系统提示】你的小说达到 {self.words} 字、收藏 {self.fans}，编辑发来私信："
-                "恭喜签约入V，之后章节开始有收入了！"
-            )
+            self.contract_months_left = 36
+            print("【编辑来信】题材不错，文笔有潜力，我们来签一个三年约吧。")
 
     def _end_of_month(self) -> None:
         cost = self.monthly_expense
@@ -85,3 +92,7 @@ class Player:
             f"【月末结算】Month {self.month} | 成本: {cost} | 稿费: {royalty} | "
             f"净变化: {net} | 当前余额: {self.balance} | 评价: {verdict}"
         )
+        if self.signed and self.contract_months_left > 0:
+            self.contract_months_left -= 1
+            if self.contract_months_left == 0:
+                print("三年合同到期了，编辑问你要不要续约（暂时自动续约）。")
