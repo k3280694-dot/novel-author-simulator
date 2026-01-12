@@ -85,10 +85,18 @@ class Player:
             self.contract_months_left = 36
             print("【编辑来信】题材不错，文笔有潜力，我们来签一个三年约吧。")
 
+    def _check_in_v(self) -> None:
+        if self.in_v:
+            return
+        if self.signed and self.words >= 60000 and self.book_favorites >= 300:
+            self.in_v = True
+            print("【编辑来信】你的小说表现不错，已通过审核，本书正式入V！")
+
     def _end_of_month(self) -> None:
         cost = self.monthly_expense
         tips = 0
         subs = 0
+        self._check_in_v()
         if self.signed:
             if self.in_v:
                 subs = int(self.book_favorites * 0.6)
@@ -99,9 +107,11 @@ class Player:
         net = income - cost
         self.balance += net
         verdict = "入不敷出" if net < 0 else "略有盈余"
+        in_v_status = "已入V" if self.in_v else "未入V"
         print(
             f"【月末结算】Month {self.month} | 成本: {cost} | 打赏: {tips} | "
-            f"订阅: {subs} | 净变化: {net} | 当前余额: {self.balance} | 评价: {verdict}"
+            f"订阅: {subs} | 净变化: {net} | 当前余额: {self.balance} | "
+            f"评价: {verdict} | 入V: {in_v_status}"
         )
         if self.signed and self.contract_months_left > 0:
             self.contract_months_left -= 1
