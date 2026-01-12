@@ -24,6 +24,8 @@ class Player:
     words: int = 0
     signed: bool = False  # 作者是否已签约
     contract_months_left: int = 0  # 合同剩余月份，未签约为 0
+    book_favorites: int = 0
+    in_v: bool = False
 
     def advance_period(self, plan: str) -> None:
         if plan == "focus_writing":
@@ -32,6 +34,7 @@ class Player:
             self.health -= 4
             self.motivation += 3
             self.fans += random.randint(3, 10)
+            self.book_favorites += random.randint(20, 60)
         elif plan == "rest":
             self.stress = max(0, self.stress - 8)
             self.health = min(100, self.health + 5)
@@ -84,13 +87,21 @@ class Player:
 
     def _end_of_month(self) -> None:
         cost = self.monthly_expense
-        royalty = self.fans * 15 if self.signed else 0
-        net = royalty - cost
+        tips = 0
+        subs = 0
+        if self.signed:
+            if self.in_v:
+                subs = int(self.book_favorites * 0.6)
+                tips = int(self.book_favorites * 0.08)
+            else:
+                tips = int(self.book_favorites * 0.2)
+        income = tips + subs
+        net = income - cost
         self.balance += net
         verdict = "入不敷出" if net < 0 else "略有盈余"
         print(
-            f"【月末结算】Month {self.month} | 成本: {cost} | 稿费: {royalty} | "
-            f"净变化: {net} | 当前余额: {self.balance} | 评价: {verdict}"
+            f"【月末结算】Month {self.month} | 成本: {cost} | 打赏: {tips} | "
+            f"订阅: {subs} | 净变化: {net} | 当前余额: {self.balance} | 评价: {verdict}"
         )
         if self.signed and self.contract_months_left > 0:
             self.contract_months_left -= 1
