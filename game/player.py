@@ -108,11 +108,15 @@ class Player:
         self.balance += net
         verdict = "入不敷出" if net < 0 else "略有盈余"
         in_v_status = "已入V" if self.in_v else "未入V"
+        new_fans = int(self.book_favorites * 0.03)
+        new_fans = min(200, new_fans)
+        self.fans += new_fans
         print(
             f"【月末结算】Month {self.month} | 成本: {cost} | 打赏: {tips} | "
             f"订阅: {subs} | 净变化: {net} | 当前余额: {self.balance} | "
             f"评价: {verdict} | 入V: {in_v_status}"
         )
+        print(f"【粉丝】本月新增: {new_fans} 个，总粉丝: {self.fans} 个")
         if self.signed and self.contract_months_left > 0:
             self.contract_months_left -= 1
             if self.contract_months_left == 0:
