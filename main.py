@@ -26,9 +26,12 @@ def main() -> None:
     food_level = food_map.get(food_choice, "1000")
 
     player = Player("Kexin", rent_level=rent_level, food_level=food_level)
-    for plan in ("focus_writing", "focus_writing", "rest"):
-        player.advance_period(plan)
-        print(player.summary())
+    for _ in range(12):
+        for plan in ("focus_writing", "focus_writing", "focus_writing"):
+            player.advance_period(plan)
+            print(player.summary())
+            if player.new_rank_used:
+                return
 
 
 if __name__ == "__main__":

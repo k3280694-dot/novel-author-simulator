@@ -32,7 +32,7 @@ class Player:
     book_favorites: int = 0
     in_v: bool = False
     words_this_month: int = 0  # 本月新增写作字数
-    new_book_chart_used: bool = False  # 新书千字榜是否已经触发
+    new_rank_used: bool = False  # 新书千字榜是否已经触发
     monthly_royalty: int = 0  # 当月稿费
     monthly_tips: int = 0  # 当月打赏
 
@@ -166,26 +166,23 @@ class Player:
             self.in_v = True
             print("【编辑来信】你的小说表现不错，已通过审核，本书正式入V！")
 
-    def _new_book_chart_boost(self) -> None:
-        roll = random.random()
-        if roll < 0.3:
-            rank = 1
-            fav_gain = random.randint(8000, 12000)
-        elif roll < 0.6:
-            rank = random.randint(2, 3)
-            fav_gain = random.randint(6000, 10000)
-        elif roll < 0.9:
-            rank = random.randint(4, 10)
-            fav_gain = random.randint(3000, 6000)
+    def _apply_new_book_rank_boost(self) -> None:
+        base = max(1, 30 - self.book_favorites // 300)
+        upper = min(base + 10, 30)
+        rank = random.randint(base, upper)
+        if 1 <= rank <= 3:
+            gain = random.randint(5000, 10000)
+        elif 4 <= rank <= 10:
+            gain = random.randint(2000, 6000)
+        elif 11 <= rank <= 20:
+            gain = random.randint(800, 2000)
         else:
-            rank = random.randint(11, 30)
-            fav_gain = random.randint(800, 2000)
-        self.book_favorites += fav_gain
-        new_fans = int(fav_gain * random.uniform(0.03, 0.07))
-        self.fans += new_fans
+            gain = random.randint(200, 600)
+        self.book_favorites += gain
+        self.fans += gain // 50
         print(
-            "【新书千字榜】本书今日登上千字推荐榜，第 "
-            f"{rank} 名。新增收藏 {fav_gain}，当日涨粉 {new_fans}。"
+            "【新书千字榜】今天榜单排名第 "
+            f"{rank} 名，新增收藏 {gain} 个，当前收藏 {self.book_favorites} 个。"
         )
 
     def _calc_tips(self) -> int:
@@ -213,9 +210,9 @@ class Player:
         self.monthly_royalty = 0
         self.monthly_tips = 0
         self._check_in_v()
-        if self.in_v and not self.new_book_chart_used:
-            self._new_book_chart_boost()
-            self.new_book_chart_used = True
+        if self.in_v and not self.new_rank_used:
+            self._apply_new_book_rank_boost()
+            self.new_rank_used = True
         if not self.signed:
             status_note = "当前未签约，暂无收入"
         elif not self.in_v:
