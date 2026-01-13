@@ -16,6 +16,11 @@ class Player:
     month: int = 1
     period: int = 1
     balance: int = 20000
+    rent_level: str = "1200"
+    food_level: str = "1000"
+    rent_cost: int = 1200
+    food_cost: int = 1000
+    other_cost: int = 500
     monthly_expense: int = 4000
     stress: int = 20
     health: int = 100
@@ -30,6 +35,67 @@ class Player:
     new_book_chart_used: bool = False  # 新书千字榜是否已经触发
     monthly_royalty: int = 0  # 当月稿费
     monthly_tips: int = 0  # 当月打赏
+
+    def _update_lifestyle(self) -> tuple[int, int, int]:
+        """Update lifestyle costs and return monthly status deltas."""
+        if self.rent_level == "800":
+            self.rent_cost = 800
+            rent_stress = 6
+            rent_health = -1
+            rent_motivation = -1
+        elif self.rent_level == "1200":
+            self.rent_cost = 1200
+            rent_stress = 0
+            rent_health = 0
+            rent_motivation = 0
+        elif self.rent_level == "2000":
+            self.rent_cost = 2000
+            rent_stress = -3
+            rent_health = 0
+            rent_motivation = 2
+        elif self.rent_level == "3000":
+            self.rent_cost = 3000
+            rent_stress = -4
+            rent_health = 0
+            rent_motivation = 3
+        else:
+            self.rent_cost = 1200
+            rent_stress = 0
+            rent_health = 0
+            rent_motivation = 0
+
+        if self.food_level == "600":
+            self.food_cost = 600
+            food_stress = 2
+            food_health = -4
+            food_motivation = 0
+        elif self.food_level == "1000":
+            self.food_cost = 1000
+            food_stress = 0
+            food_health = 0
+            food_motivation = 0
+        elif self.food_level == "1600":
+            self.food_cost = 1600
+            food_stress = 0
+            food_health = 3
+            food_motivation = 0
+        elif self.food_level == "2400":
+            self.food_cost = 2400
+            food_stress = -1
+            food_health = -1
+            food_motivation = 2
+        else:
+            self.food_cost = 1000
+            food_stress = 0
+            food_health = 0
+            food_motivation = 0
+
+        self.monthly_expense = self.rent_cost + self.food_cost + self.other_cost
+
+        stress_delta = rent_stress + food_stress
+        health_delta = rent_health + food_health
+        motivation_delta = rent_motivation + food_motivation
+        return stress_delta, health_delta, motivation_delta
 
     def advance_period(self, plan: str) -> None:
         if plan == "focus_writing":
@@ -123,6 +189,10 @@ class Player:
         )
 
     def _end_of_month(self) -> None:
+        stress_delta, health_delta, motivation_delta = self._update_lifestyle()
+        self.stress += stress_delta
+        self.health += health_delta
+        self.motivation += motivation_delta
         cost = self.monthly_expense
         self.monthly_royalty = 0
         self.monthly_tips = 0
@@ -153,7 +223,8 @@ class Player:
         new_fans = min(200, new_fans)
         self.fans += new_fans
         print(
-            f"【月末结算】Month {self.month} | 成本: {cost} 元 | "
+            f"【月末结算】Month {self.month} | 成本: {cost} 元（房租 {self.rent_cost} + "
+            f"伙食 {self.food_cost} + 其他 {self.other_cost}） | "
             f"稿费: {self.monthly_royalty} 元 | 打赏: {self.monthly_tips} 元 | "
             f"净变化: {net} 元 | 当前余额: {self.balance} 元 | "
             f"评价: {verdict} | 入 v：{in_v_status} | {status_note}"
