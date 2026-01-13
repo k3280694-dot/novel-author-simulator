@@ -94,27 +94,25 @@ class Player:
 
     def _end_of_month(self) -> None:
         cost = self.monthly_expense
-        tips = 0
-        subs = 0
+        tip_income = 0
+        royalty_income = 0
         self._check_in_v()
         if self.signed:
+            tip_income = random.randint(0, self.fans * 50)
             if self.in_v:
-                subs = int(self.book_favorites * 0.6)
-                tips = int(self.book_favorites * 0.08)
-            else:
-                tips = int(self.book_favorites * 0.2)
-        income = tips + subs
-        net = income - cost
+                royalty_income = self.fans * 15
+        net = -cost + tip_income + royalty_income
         self.balance += net
         verdict = "入不敷出" if net < 0 else "略有盈余"
-        in_v_status = "已入V" if self.in_v else "未入V"
+        in_v_status = "已入 v" if self.in_v else "未入 v"
         new_fans = int(self.book_favorites * 0.03)
         new_fans = min(200, new_fans)
         self.fans += new_fans
         print(
-            f"【月末结算】Month {self.month} | 成本: {cost} | 打赏: {tips} | "
-            f"订阅: {subs} | 净变化: {net} | 当前余额: {self.balance} | "
-            f"评价: {verdict} | 入V: {in_v_status}"
+            f"【月末结算】Month {self.month} | 成本: {cost} 元 | "
+            f"打赏收入: {tip_income} 元 | 稿费: {royalty_income} 元 | "
+            f"净变化: {net} 元 | 当前余额: {self.balance} 元 | "
+            f"评价: {verdict} | 入 v：{in_v_status}"
         )
         print(f"【粉丝】本月新增: {new_fans} 个，总粉丝: {self.fans} 个")
         if self.signed and self.contract_months_left > 0:
