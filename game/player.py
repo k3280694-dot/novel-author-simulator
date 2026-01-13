@@ -188,6 +188,22 @@ class Player:
             f"{rank} 名。新增收藏 {fav_gain}，当日涨粉 {new_fans}。"
         )
 
+    def _calc_tips(self) -> int:
+        if not self.signed:
+            return 0
+        if not self.in_v:
+            probability = 0.05 + min(self.book_favorites, 1000) / 1000 * 0.10
+            if random.random() > probability:
+                return 0
+            return random.choices([2, 5, 10, 20], weights=[4, 4, 1, 1], k=1)[0]
+        scale = max(self.book_favorites, self.fans * 2)
+        probability = 0.2 + min(scale, 10000) / 10000 * 0.6
+        if random.random() > probability:
+            return 0
+        base = scale / 100
+        amount = int(random.gauss(base, max(1, base / 3)))
+        return max(0, min(1000, amount))
+
     def _end_of_month(self) -> None:
         stress_delta, health_delta, motivation_delta = self._update_lifestyle()
         self.stress += stress_delta
@@ -203,10 +219,10 @@ class Player:
         if not self.signed:
             status_note = "当前未签约，暂无收入"
         elif not self.in_v:
-            self.monthly_tips = random.randint(0, self.fans * 50)
+            self.monthly_tips = self._calc_tips()
             status_note = "已签约，仍在免费期，只有打赏收入"
         else:
-            self.monthly_tips = random.randint(0, self.fans * 50)
+            self.monthly_tips = self._calc_tips()
             approx_subs = min(
                 int(self.book_favorites * 1.5),
                 int(self.fans * 2.5),
