@@ -31,8 +31,8 @@ class Player:
     contract_months_left: int = 0  # 合同剩余月份，未签约为 0
     book_favorites: int = 0
     in_v: bool = False
-    last_period_words: int = 0  # 本旬写了多少字
-    update_tier: str = "normal"  # 最近一次考核档位："low" / "normal" / "high"
+    last_period_words: int = 0  # 上一旬写了多少字
+    update_tier: str = "normal"  # 当前更新档位："low" / "normal" / "high" / "overwork"
     words_this_month: int = 0  # 本月新增写作字数
     favorites_delta_this_month: int = 0
     fans_delta_this_month: int = 0
@@ -136,11 +136,11 @@ class Player:
         self.health = _clamp(self.health, 0, 100)
         self.motivation = _clamp(self.motivation, 0, 100)
 
-        self._evaluate_update_tier()
         self._check_sign_contract()
         self.period += 1
         if self.period > 3:
             self.period = 1
+            self._update_update_tier()
             self._end_of_month()
             self.month += 1
 
@@ -151,10 +151,16 @@ class Player:
             sign_status = f"已签约，合同剩余 {self.contract_months_left} 个月"
         else:
             sign_status = "未签约"
+        tier_label = {
+            "low": "低强度",
+            "normal": "常规",
+            "high": "高强度",
+            "overwork": "过载",
+        }.get(self.update_tier, "常规")
         return (
             f"Month {self.month}-{label} | 签约状态: {sign_status} | Words: {self.words} "
             f"| Balance: {self.balance} | Stress: {self.stress} | Health: {self.health} "
-            f"| Motivation: {self.motivation} | Fans: {self.fans}"
+            f"| Motivation: {self.motivation} | Fans: {self.fans} | 更新档位: {tier_label}"
         )
 
     def _check_sign_contract(self) -> None:
@@ -177,20 +183,16 @@ class Player:
             self.in_v = True
             print("【编辑来信】你的小说表现不错，已通过审核，本书正式入V！")
 
-    def _evaluate_update_tier(self) -> None:
-        if self.in_v:
-            low_threshold = 30000
-            high_threshold = 60000
-        else:
-            low_threshold = 20000
-            high_threshold = 35000
-
-        if self.last_period_words < low_threshold:
+    def _update_update_tier(self) -> None:
+        total_words_this_month = self.words_this_month
+        if total_words_this_month < 30000:
             self.update_tier = "low"
-        elif self.last_period_words <= high_threshold:
+        elif total_words_this_month < 60000:
             self.update_tier = "normal"
-        else:
+        elif total_words_this_month < 90000:
             self.update_tier = "high"
+        else:
+            self.update_tier = "overwork"
 
     def _apply_new_book_rank_boost(self) -> None:
         base = max(1, 30 - self.book_favorites // 300)
@@ -266,18 +268,21 @@ class Player:
         self.fans += new_fans
         self.fans_delta_this_month += new_fans
         multiplier = 1.0
+        update_note = "本月更新节奏稳定，读者反馈正常。"
         if self.update_tier == "low":
-            multiplier = 0.5
-            self.motivation -= 5
-            self.stress += 5
-            print("【更新考核】本月更新量偏低，读者开始流失，编辑也有点不满。")
+            multiplier = 0.7
+            update_note = "更新节奏有点不稳，读者有点着急。"
         elif self.update_tier == "high":
-            multiplier = 1.3
-            self.stress += 8
+            multiplier = 1.2
+            self.stress += 5
+            update_note = "更新很给力，读者好感度提升。"
+        elif self.update_tier == "overwork":
+            multiplier = 1.1
+            self.stress += 10
             self.health -= 5
-            print("【更新考核】高强度更新带来了人气上涨，但身体和精神都更疲惫了。")
-        else:
-            print("【更新考核】本月更新量达标。")
+            update_note = "更新过于猛，读者热情高涨，但身体开始透支。"
+
+        print(f"【读者反馈】{update_note}")
 
         if self.favorites_delta_this_month or self.fans_delta_this_month:
             self.book_favorites -= self.favorites_delta_this_month
@@ -298,6 +303,13 @@ class Player:
             f"净变化: {net} 元 | 当前余额: {self.balance} 元 | "
             f"评价: {verdict} | 入 v：{in_v_status} | {status_note}"
         )
+        tier_label = {
+            "low": "低强度更新",
+            "normal": "常规更新",
+            "high": "高强度更新",
+            "overwork": "过载更新",
+        }.get(self.update_tier, "常规更新")
+        print(f"【更新档位】本月属于{tier_label}")
         print(f"【粉丝】本月新增: {new_fans} 个，总粉丝: {self.fans} 个")
         self.words_this_month = 0
         if self.signed and self.contract_months_left > 0:
