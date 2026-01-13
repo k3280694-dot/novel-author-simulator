@@ -31,7 +31,11 @@ class Player:
     contract_months_left: int = 0  # 合同剩余月份，未签约为 0
     book_favorites: int = 0
     in_v: bool = False
+    last_period_words: int = 0  # 本旬写了多少字
+    update_tier: str = "normal"  # 最近一次考核档位："low" / "normal" / "high"
     words_this_month: int = 0  # 本月新增写作字数
+    favorites_delta_this_month: int = 0
+    fans_delta_this_month: int = 0
     new_rank_used: bool = False  # 新书千字榜是否已经触发
     monthly_royalty: int = 0  # 当月稿费
     monthly_tips: int = 0  # 当月打赏
@@ -98,6 +102,7 @@ class Player:
         return stress_delta, health_delta, motivation_delta
 
     def advance_period(self, plan: str) -> None:
+        before = self.words
         if plan == "focus_writing":
             words_gained = random.randint(8000, 12000)
             self.words += words_gained
@@ -105,8 +110,12 @@ class Player:
             self.stress += 8
             self.health -= 4
             self.motivation += 3
-            self.fans += random.randint(3, 10)
-            self.book_favorites += random.randint(20, 60)
+            fans_gained = random.randint(3, 10)
+            favorites_gained = random.randint(20, 60)
+            self.fans += fans_gained
+            self.book_favorites += favorites_gained
+            self.fans_delta_this_month += fans_gained
+            self.favorites_delta_this_month += favorites_gained
         elif plan == "rest":
             self.stress = max(0, self.stress - 8)
             self.health = min(100, self.health + 5)
@@ -119,6 +128,7 @@ class Player:
             self.stress += 2
             self.motivation -= 1
 
+        self.last_period_words = self.words - before
         if self.stress > 70:
             self.health -= 5
 
@@ -126,6 +136,7 @@ class Player:
         self.health = _clamp(self.health, 0, 100)
         self.motivation = _clamp(self.motivation, 0, 100)
 
+        self._evaluate_update_tier()
         self._check_sign_contract()
         self.period += 1
         if self.period > 3:
@@ -157,14 +168,29 @@ class Player:
         ):
             self.signed = True
             self.contract_months_left = 36
-            print("【编辑来信】题材不错，文笔有潜力，我们来签一个三年约吧。")
+            print("【站内来信】题材不错，文笔有潜力，我们来签一个三年约吧。")
 
     def _check_in_v(self) -> None:
         if self.in_v:
             return
         if self.signed and self.words >= 60000 and self.book_favorites >= 300:
             self.in_v = True
-            print("【编辑来信】你的小说表现不错，已通过审核，本书正式入V！")
+            print("【站内来信】你的小说表现不错，已通过审核，本书正式入V！")
+
+    def _evaluate_update_tier(self) -> None:
+        if self.in_v:
+            low_threshold = 30000
+            high_threshold = 60000
+        else:
+            low_threshold = 20000
+            high_threshold = 35000
+
+        if self.last_period_words < low_threshold:
+            self.update_tier = "low"
+        elif self.last_period_words <= high_threshold:
+            self.update_tier = "normal"
+        else:
+            self.update_tier = "high"
 
     def _apply_new_book_rank_boost(self) -> None:
         base = max(1, 30 - self.book_favorites // 300)
@@ -179,7 +205,10 @@ class Player:
         else:
             gain = random.randint(200, 600)
         self.book_favorites += gain
-        self.fans += gain // 50
+        self.favorites_delta_this_month += gain
+        fans_gained = gain // 50
+        self.fans += fans_gained
+        self.fans_delta_this_month += fans_gained
         print(
             "【新书千字榜】今天榜单排名第 "
             f"{rank} 名，新增收藏 {gain} 个，当前收藏 {self.book_favorites} 个。"
@@ -235,6 +264,37 @@ class Player:
         new_fans = int(self.book_favorites * 0.03)
         new_fans = min(200, new_fans)
         self.fans += new_fans
+        self.fans_delta_this_month += new_fans
+        multiplier = 1.0
+        if self.update_tier == "low":
+            multiplier = 0.3
+            self.stress -= 3
+            self.health += 3
+            print(
+                "【更新考核】本月更新偏少，你休息得比较多，但读者开始流失，对作品的新鲜感在下降。"
+            )
+        elif self.update_tier == "high":
+            multiplier = 1.4
+            self.stress += 10
+            self.health -= 8
+            print("【更新考核】本月高强度爆更，收藏和粉丝暴涨，但你的压力和身体负担也在急剧上升。")
+        else:
+            self.stress += 1
+            self.health -= 1
+            print("【更新考核】本月更新稳定，读者对你的连载节奏基本满意。")
+
+        if self.favorites_delta_this_month or self.fans_delta_this_month:
+            self.book_favorites -= self.favorites_delta_this_month
+            self.fans -= self.fans_delta_this_month
+            adjusted_favorites = int(
+                round(self.favorites_delta_this_month * multiplier)
+            )
+            adjusted_fans = int(round(self.fans_delta_this_month * multiplier))
+            self.book_favorites += adjusted_favorites
+            self.fans += adjusted_fans
+
+        self.favorites_delta_this_month = 0
+        self.fans_delta_this_month = 0
         print(
             f"【月末结算】Month {self.month} | 成本: {cost} 元（房租 {self.rent_cost} + "
             f"伙食 {self.food_cost} + 其他 {self.other_cost}） | "
@@ -247,4 +307,4 @@ class Player:
         if self.signed and self.contract_months_left > 0:
             self.contract_months_left -= 1
             if self.contract_months_left == 0:
-                print("三年合同到期了，编辑问你要不要续约（暂时自动续约）。")
+                print("三年合同到期了，站内询问你要不要续约（暂时自动续约）。")
