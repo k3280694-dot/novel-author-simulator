@@ -26,6 +26,8 @@ class Player:
     contract_months_left: int = 0  # 合同剩余月份，未签约为 0
     book_favorites: int = 0
     in_v: bool = False
+    monthly_royalty: int = 0  # 当月稿费
+    monthly_tips: int = 0  # 当月打赏
 
     def advance_period(self, plan: str) -> None:
         if plan == "focus_writing":
@@ -94,14 +96,19 @@ class Player:
 
     def _end_of_month(self) -> None:
         cost = self.monthly_expense
-        tip_income = 0
-        royalty_income = 0
+        self.monthly_royalty = 0
+        self.monthly_tips = 0
         self._check_in_v()
-        if self.signed:
-            tip_income = random.randint(0, self.fans * 50)
-            if self.in_v:
-                royalty_income = self.fans * 15
-        net = -cost + tip_income + royalty_income
+        if not self.signed:
+            status_note = "当前未签约，暂无收入"
+        elif not self.in_v:
+            self.monthly_tips = random.randint(0, self.fans * 50)
+            status_note = "已签约，仍在免费期，只有打赏收入"
+        else:
+            self.monthly_tips = random.randint(0, self.fans * 50)
+            self.monthly_royalty = self.fans * 15
+            status_note = "已签约且入 V，有稿费和打赏收入"
+        net = self.monthly_royalty + self.monthly_tips - cost
         self.balance += net
         verdict = "入不敷出" if net < 0 else "略有盈余"
         in_v_status = "已入 v" if self.in_v else "未入 v"
@@ -110,9 +117,9 @@ class Player:
         self.fans += new_fans
         print(
             f"【月末结算】Month {self.month} | 成本: {cost} 元 | "
-            f"打赏收入: {tip_income} 元 | 稿费: {royalty_income} 元 | "
+            f"稿费: {self.monthly_royalty} 元 | 打赏: {self.monthly_tips} 元 | "
             f"净变化: {net} 元 | 当前余额: {self.balance} 元 | "
-            f"评价: {verdict} | 入 v：{in_v_status}"
+            f"评价: {verdict} | 入 v：{in_v_status} | {status_note}"
         )
         print(f"【粉丝】本月新增: {new_fans} 个，总粉丝: {self.fans} 个")
         if self.signed and self.contract_months_left > 0:
