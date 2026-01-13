@@ -26,12 +26,16 @@ class Player:
     contract_months_left: int = 0  # 合同剩余月份，未签约为 0
     book_favorites: int = 0
     in_v: bool = False
+    words_this_month: int = 0  # 本月新增写作字数
+    new_book_chart_used: bool = False  # 新书千字榜是否已经触发
     monthly_royalty: int = 0  # 当月稿费
     monthly_tips: int = 0  # 当月打赏
 
     def advance_period(self, plan: str) -> None:
         if plan == "focus_writing":
-            self.words += random.randint(8000, 12000)
+            words_gained = random.randint(8000, 12000)
+            self.words += words_gained
+            self.words_this_month += words_gained
             self.stress += 8
             self.health -= 4
             self.motivation += 3
@@ -42,7 +46,9 @@ class Player:
             self.health = min(100, self.health + 5)
             self.motivation = min(100, self.motivation + 2)
         else:
-            self.words += random.randint(2000, 4000)
+            words_gained = random.randint(2000, 4000)
+            self.words += words_gained
+            self.words_this_month += words_gained
             self.balance += 1500
             self.stress += 2
             self.motivation -= 1
@@ -94,11 +100,36 @@ class Player:
             self.in_v = True
             print("【编辑来信】你的小说表现不错，已通过审核，本书正式入V！")
 
+    def _new_book_chart_boost(self) -> None:
+        roll = random.random()
+        if roll < 0.3:
+            rank = 1
+            fav_gain = random.randint(8000, 12000)
+        elif roll < 0.6:
+            rank = random.randint(2, 3)
+            fav_gain = random.randint(6000, 10000)
+        elif roll < 0.9:
+            rank = random.randint(4, 10)
+            fav_gain = random.randint(3000, 6000)
+        else:
+            rank = random.randint(11, 30)
+            fav_gain = random.randint(800, 2000)
+        self.book_favorites += fav_gain
+        new_fans = int(fav_gain * random.uniform(0.03, 0.07))
+        self.fans += new_fans
+        print(
+            "【新书千字榜】本书今日登上千字推荐榜，第 "
+            f"{rank} 名。新增收藏 {fav_gain}，当日涨粉 {new_fans}。"
+        )
+
     def _end_of_month(self) -> None:
         cost = self.monthly_expense
         self.monthly_royalty = 0
         self.monthly_tips = 0
         self._check_in_v()
+        if self.in_v and not self.new_book_chart_used:
+            self._new_book_chart_boost()
+            self.new_book_chart_used = True
         if not self.signed:
             status_note = "当前未签约，暂无收入"
         elif not self.in_v:
@@ -106,7 +137,13 @@ class Player:
             status_note = "已签约，仍在免费期，只有打赏收入"
         else:
             self.monthly_tips = random.randint(0, self.fans * 50)
-            self.monthly_royalty = self.fans * 15
+            approx_subs = min(
+                int(self.book_favorites * 1.5),
+                int(self.fans * 2.5),
+            )
+            unit_royalty = random.uniform(0.22, 0.28)
+            thousands = self.words_this_month / 1000
+            self.monthly_royalty = int(thousands * approx_subs * unit_royalty)
             status_note = "已签约且入 V，有稿费和打赏收入"
         net = self.monthly_royalty + self.monthly_tips - cost
         self.balance += net
@@ -122,6 +159,7 @@ class Player:
             f"评价: {verdict} | 入 v：{in_v_status} | {status_note}"
         )
         print(f"【粉丝】本月新增: {new_fans} 个，总粉丝: {self.fans} 个")
+        self.words_this_month = 0
         if self.signed and self.contract_months_left > 0:
             self.contract_months_left -= 1
             if self.contract_months_left == 0:
