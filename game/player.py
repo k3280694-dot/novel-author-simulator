@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 import random
 
 
@@ -12,6 +13,36 @@ def _clamp(value: int, minimum: int, maximum: int) -> int:
 
 @dataclass
 class Player:
+    SHOP_ACTIVITIES: ClassVar[dict[str, dict[str, int | str]]] = {
+        "movie": {
+            "label": "看电影",
+            "cost": 80,
+            "stress": -10,
+            "health": 5,
+            "motivation": 5,
+        },
+        "massage": {
+            "label": "按摩",
+            "cost": 200,
+            "stress": -25,
+            "health": 15,
+            "motivation": 10,
+        },
+        "ktv": {
+            "label": "KTV 唱歌",
+            "cost": 300,
+            "stress": -20,
+            "health": 5,
+            "motivation": 15,
+        },
+        "gym": {
+            "label": "健身房出汗",
+            "cost": 150,
+            "stress": -15,
+            "health": 10,
+            "motivation": 10,
+        },
+    }
     name: str
     month: int = 1
     period: int = 1
@@ -39,6 +70,9 @@ class Player:
     new_rank_used: bool = False  # 新书千字榜是否已经触发
     monthly_royalty: int = 0  # 当月稿费
     monthly_tips: int = 0  # 当月打赏
+    just_burnout: bool = False
+    just_signed: bool = False
+    just_in_v: bool = False
 
     def _update_lifestyle(self) -> tuple[int, int, int]:
         """Update lifestyle costs and return monthly status deltas."""
@@ -101,6 +135,19 @@ class Player:
         motivation_delta = rent_motivation + food_motivation
         return stress_delta, health_delta, motivation_delta
 
+    def do_activity(self, activity: str) -> None:
+        """花钱进行一次休闲活动，用于减压 / 回血 / 恢复创作动力。"""
+        cfg = self.SHOP_ACTIVITIES.get(activity)
+        if not cfg:
+            return
+        if self.balance < cfg["cost"]:
+            return
+
+        self.balance -= cfg["cost"]
+        self.stress = _clamp(self.stress + int(cfg["stress"]), 0, 100)
+        self.health = _clamp(self.health + int(cfg["health"]), 0, 100)
+        self.motivation = _clamp(self.motivation + int(cfg["motivation"]), 0, 100)
+
     def advance_period(self, plan: str) -> None:
         before = self.words
         if plan == "focus_writing":
@@ -144,6 +191,15 @@ class Player:
             self._end_of_month()
             self.month += 1
 
+        self.stress = _clamp(self.stress, 0, 100)
+        self.health = _clamp(self.health, 0, 100)
+
+        self.just_burnout = False
+        if self.stress >= 100 or self.health <= 0:
+            self.just_burnout = True
+            self.balance = max(0, self.balance - 1000)
+            self.motivation = max(0, self.motivation - 15)
+
     def summary(self) -> str:
         labels = {1: "上旬", 2: "中旬", 3: "下旬"}
         label = labels.get(self.period, "未知")
@@ -169,11 +225,10 @@ class Player:
     def is_game_over(self) -> tuple[bool, str]:
         if self.is_book_finished():
             return True, "finished"
-        if self.health <= 0:
-            return True, "health_zero"
         return False, ""
 
     def _check_sign_contract(self) -> None:
+        self.just_signed = False
         if self.signed:
             return
         if (
@@ -183,14 +238,17 @@ class Player:
             and self.motivation >= 60
         ):
             self.signed = True
+            self.just_signed = True
             self.contract_months_left = 36
             print("【编辑来信】题材不错，文笔有潜力，我们来签一个三年约吧。")
 
     def _check_in_v(self) -> None:
+        self.just_in_v = False
         if self.in_v:
             return
         if self.signed and self.words >= 60000 and self.book_favorites >= 300:
             self.in_v = True
+            self.just_in_v = True
             print("【编辑来信】你的小说表现不错，已通过审核，本书正式入V！")
 
     def _update_update_tier(self) -> None:
