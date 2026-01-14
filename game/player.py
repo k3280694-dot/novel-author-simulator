@@ -163,6 +163,16 @@ class Player:
             f"| Motivation: {self.motivation} | Fans: {self.fans} | 更新档位: {tier_label}"
         )
 
+    def is_book_finished(self) -> bool:
+        return self.words >= 300_000 and self.health > 0
+
+    def is_game_over(self) -> tuple[bool, str]:
+        if self.is_book_finished():
+            return True, "finished"
+        if self.health <= 0:
+            return True, "health_zero"
+        return False, ""
+
     def _check_sign_contract(self) -> None:
         if self.signed:
             return
