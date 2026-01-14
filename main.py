@@ -26,12 +26,24 @@ def main() -> None:
     food_level = food_map.get(food_choice, "1000")
 
     player = Player("Kexin", rent_level=rent_level, food_level=food_level)
+    game_over = False
     for _ in range(12):
         for plan in ("focus_writing", "focus_writing", "focus_writing"):
             player.advance_period(plan)
+            over, reason = player.is_game_over()
+            if over:
+                print(player.summary())
+                if reason == "finished":
+                    print("恭喜！你的小说已经完结。")
+                elif reason == "health_zero":
+                    print("健康归零，游戏结束。")
+                game_over = True
+                break
             print(player.summary())
             if player.new_rank_used:
                 return
+        if game_over:
+            break
 
 
 if __name__ == "__main__":
