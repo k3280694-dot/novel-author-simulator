@@ -73,6 +73,7 @@ class Player:
     just_burnout: bool = False
     just_signed: bool = False
     just_in_v: bool = False
+    just_moved: bool = False
 
     def _update_lifestyle(self) -> tuple[int, int, int]:
         """Update lifestyle costs and return monthly status deltas."""

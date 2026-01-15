@@ -37,6 +37,9 @@ def main() -> None:
     if state.get("just_burnout"):
         st.error("⚠️ 这几旬把自己彻底熬垮了，去医院检查花了 1000 元，下旬开始最好多安排休息或花钱解压。")
 
+    if state.get("just_moved"):
+        st.info("你刚刚搬家了一次：扣除了一次性搬家费用，并稍微增加了一点压力。")
+
     if state["month"] == 1 and state["period"] == 1:
         st.subheader("🏠 选择起步生活方式")
         rent_label = st.radio(
@@ -88,6 +91,34 @@ def main() -> None:
         f"房租 {state['rent_cost']} 元 | 伙食 {state['food_cost']} 元 | "
         f"其他 {state['other_cost']} 元 | 月支出 {state['monthly_expense']} 元"
     )
+    with st.expander("🛏 调整本句之后的住宿与伙食（可选）", expanded=False):
+        current_rent = state.get("rent_level", "1200")
+        current_food = state.get("food_level", "1000")
+
+        rent_options = ["800", "1200", "2000", "3000"]
+        new_rent = st.radio(
+            "住房档位（越贵越宽敞）",
+            rent_options,
+            index=rent_options.index(str(current_rent))
+            if str(current_rent) in rent_options
+            else 1,
+            horizontal=True,
+        )
+        food_options = ["600", "1000", "1600", "2400"]
+        new_food = st.radio(
+            "伙食档位（越贵越健康/好吃）",
+            food_options,
+            index=food_options.index(str(current_food))
+            if str(current_food) in food_options
+            else 1,
+            horizontal=True,
+        )
+        if st.button("保存生活方式，下句开始生效 ✅"):
+            game.set_lifestyle(new_rent, new_food)
+            st.success(
+                f"已更新：住房档位 {new_rent} 元/月，伙食档位 {new_food} 元/月，下句开始按新档位结算～"
+            )
+            st.rerun()
 
     with st.expander("🛒 本旬用钱回血 / 解压（可选）", expanded=False):
         st.write("用赚来的稿费改善生活吧～")

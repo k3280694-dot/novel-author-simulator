@@ -17,7 +17,7 @@ class Game:
         return getattr(self.player, name, default)
 
     def get_state(self) -> dict[str, Any]:
-        return {
+        state = {
             "month": self._get("month", 1),
             "period": self._get("period", 1),
             "balance": self._get("balance", 0),
@@ -44,7 +44,10 @@ class Game:
             "just_signed": self._get("just_signed", False),
             "just_in_v": self._get("just_in_v", False),
             "just_burnout": self._get("just_burnout", False),
+            "just_moved": self._get("just_moved", False),
         }
+        self.player.just_moved = False
+        return state
 
     def step(self, plan: str) -> dict[str, Any]:
         self.player.advance_period(plan)
@@ -57,7 +60,14 @@ class Game:
 
     def set_lifestyle(self, rent_level: str, food_level: str) -> dict[str, Any]:
         """更新玩家的房租与伙食档位，并刷新生活成本。"""
+        old_rent_level = self.player.rent_level
         self.player.rent_level = rent_level
         self.player.food_level = food_level
         self.player._update_lifestyle()
+        if rent_level != old_rent_level:
+            moving_cost = int(rent_level)
+            self.player.balance -= moving_cost
+            self.player.stress = min(100, self.player.stress + 5)
+            self.player.motivation = max(0, self.player.motivation - 3)
+            self.player.just_moved = True
         return self.get_state()
