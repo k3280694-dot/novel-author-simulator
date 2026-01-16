@@ -87,15 +87,18 @@ def main() -> None:
     status_cols[3].metric("签约状态", "已签约" if state["signed"] else "未签约")
     status_cols[4].metric("入 V", "已入 V" if state["in_v"] else "未入 V")
 
-    st.subheader("🧠 AI 编辑建议 (deepseek)")
-    if st.button("获取 AI 编辑建议"):
-        prompt = format_state_for_ai(state)
-        try:
-            suggestion = ask_deepseek(prompt)
-        except Exception as exc:
-            st.warning(f"调用 DeepSeek 失败：{exc}")
-        else:
-            st.write(suggestion)
+    def render_ai_editor_advice() -> None:
+        st.subheader("🧠 AI 编辑建议 (deepseek)")
+        if st.button("获取 AI 编辑建议"):
+            prompt = format_state_for_ai(state)
+            try:
+                suggestion = ask_deepseek(prompt)
+            except Exception as exc:
+                st.warning(f"调用 DeepSeek 失败：{exc}")
+            else:
+                st.write(suggestion)
+
+    render_ai_editor_advice()
 
     st.subheader("💰 生活成本")
     st.write(
