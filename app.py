@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import streamlit as st
 
-from game.game import Game
 from deepseek_client import ask_deepseek, format_state_for_ai
+from game.game import Game
+from story_api import (
+    generate_plot_conflict,
+    generate_reader_comments,
+    generate_story_idea,
+)
 
 
 def _period_label(period: int) -> str:
@@ -28,6 +33,9 @@ def main() -> None:
 
     game = _ensure_game()
     state = game.get_state()
+    st.session_state.setdefault("story_idea", "")
+    st.session_state.setdefault("plot_conflict", "")
+    st.session_state.setdefault("reader_comments", [])
 
     if state.get("just_signed"):
         st.success("📩 编辑来信：题材不错，文笔有潜力，我们来签一个三年约吧。")
@@ -37,6 +45,9 @@ def main() -> None:
 
     if state.get("just_burnout"):
         st.error("⚠️ 这几旬把自己彻底熬垮了，去医院检查花了 1000 元，下旬开始最好多安排休息或花钱解压。")
+
+    if st.session_state.get("plot_conflict"):
+        st.info(f"⚡ 本旬剧情冲突：{st.session_state['plot_conflict']}")
 
     if state.get("just_moved"):
         st.info("你刚刚搬家了一次：扣除了一次性搬家费用，并稍微增加了一点压力。")
@@ -86,6 +97,12 @@ def main() -> None:
     status_cols[2].metric("动力", f"{state['motivation']}/100")
     status_cols[3].metric("签约状态", "已签约" if state["signed"] else "未签约")
     status_cols[4].metric("入 V", "已入 V" if state["in_v"] else "未入 V")
+
+    st.subheader("🪄 本旬写作灵感")
+    if st.button("生成写作灵感"):
+        st.session_state["story_idea"] = generate_story_idea(state)
+    if st.session_state["story_idea"]:
+        st.write(st.session_state["story_idea"])
 
     def render_ai_editor_advice() -> None:
         st.subheader("🧠 AI 编辑建议 (deepseek)")
@@ -151,6 +168,15 @@ def main() -> None:
             game.apply_activity("gym")
             st.rerun()
 
+    st.subheader("💬 模拟读者评论区")
+    comments = st.session_state.get("reader_comments", [])
+    with st.expander("展开读者评论", expanded=bool(comments)):
+        if not comments:
+            st.caption("本旬还没有评论，先写点东西吧～")
+        else:
+            for idx, c in enumerate(comments, 1):
+                st.markdown(f"**读者{idx}：** {c}")
+
     st.subheader("🗓️ 选择本旬安排")
     plan_label = st.radio(
         "计划",
@@ -167,8 +193,20 @@ def main() -> None:
         "休息调整（恢复健康和动力）": "rest",
         "摸鱼摆烂（字数少，可能更轻松）": "slack",
     }
+    plan_key = plan_map[plan_label]
     if st.button("推进到下一旬"):
-        game.step(plan_map[plan_label])
+        new_state = game.step(plan_key)
+        st.session_state["story_idea"] = ""
+        try:
+            st.session_state["plot_conflict"] = generate_plot_conflict(new_state)
+        except Exception:
+            st.session_state["plot_conflict"] = ""
+        try:
+            st.session_state["reader_comments"] = generate_reader_comments(
+                new_state, n=5
+            )
+        except Exception:
+            st.session_state["reader_comments"] = []
         st.rerun()
 
 
